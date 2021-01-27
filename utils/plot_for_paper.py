@@ -10,8 +10,8 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utilities import (get_filename, traverse_folder, int16_to_float32, note_to_freq, TargetProcessor, RegressionPostProcessor, read_midi)
-import config
+from .utilities import (get_filename, traverse_folder, int16_to_float32, note_to_freq, TargetProcessor, RegressionPostProcessor, read_midi)
+from . import config
 from inference import PianoTranscription
 
 '''

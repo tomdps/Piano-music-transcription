@@ -6,7 +6,7 @@ import h5py
 import pickle
 import matplotlib.pyplot as plt
 
-from utilities import create_folder
+from .utilities import create_folder
 
 
 def plot(args):

@@ -9,10 +9,10 @@ import librosa
 import sox
 import logging
 
-from utilities import (create_folder, int16_to_float32, traverse_folder, 
+from .utilities import (create_folder, int16_to_float32, traverse_folder, 
     pad_truncate_sequence, TargetProcessor, write_events_to_midi, 
     plot_waveform_midi_targets)
-import config
+from . import config
 
 
 class MaestroDataset(object):
