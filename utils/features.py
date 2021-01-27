@@ -8,9 +8,9 @@ import h5py
 import librosa
 import logging
 
-from .utilities import (create_folder, float32_to_int16, create_logging, 
+from utilities import (create_folder, float32_to_int16, create_logging, 
     get_filename, read_metadata, read_midi, read_maps_midi)
-from . import config
+import config
 
 
 def pack_maestro_dataset_to_hdf5(args):
@@ -96,7 +96,6 @@ def pack_maps_dataset_to_hdf5(args):
     workspace = args.workspace
 
     sample_rate = config.sample_rate
-    pianos = ['ENSTDkCl', 'ENSTDkAm']
 
     # Paths
     waveform_hdf5s_dir = os.path.join(workspace, 'hdf5s', 'maps')
@@ -109,32 +108,32 @@ def pack_maps_dataset_to_hdf5(args):
     count = 0
 
     # Load & resample each audio file to a hdf5 file
-    for piano in pianos:
-        sub_dir = os.path.join(dataset_dir, piano, 'MUS')
-
-        audio_names = [os.path.splitext(name)[0] for name in os.listdir(sub_dir) 
-            if os.path.splitext(name)[-1] == '.mid']
+    
+    
+    sub_dir=dataset_dir
+    audio_names = [os.path.splitext(name)[0] for name in os.listdir(sub_dir) 
+        if os.path.splitext(name)[-1] == '.mid']
         
-        for audio_name in audio_names:
-            print('{} {}'.format(count, audio_name))
-            audio_path = '{}.wav'.format(os.path.join(sub_dir, audio_name))
-            midi_path = '{}.mid'.format(os.path.join(sub_dir, audio_name))
+    for audio_name in audio_names:
+        print('{} {}'.format(count, audio_name))
+        audio_path = '{}.wav'.format(os.path.join(sub_dir, audio_name))
+        midi_path = '{}.mid'.format(os.path.join(sub_dir, audio_name))
 
-            (audio, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
-            midi_dict = read_maps_midi(midi_path)
+        (audio, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
+        midi_dict = read_maps_midi(midi_path)
             
-            packed_hdf5_path = os.path.join(waveform_hdf5s_dir, '{}.h5'.format(audio_name))
-            create_folder(os.path.dirname(packed_hdf5_path))
+        packed_hdf5_path = os.path.join(waveform_hdf5s_dir, '{}.h5'.format(audio_name))
+        create_folder(os.path.dirname(packed_hdf5_path))
 
-            with h5py.File(packed_hdf5_path, 'w') as hf:
-                hf.attrs.create('split', data='test'.encode(), dtype='S20')
-                hf.attrs.create('midi_filename', data='{}.mid'.format(audio_name).encode(), dtype='S100')
-                hf.attrs.create('audio_filename', data='{}.wav'.format(audio_name).encode(), dtype='S100')
-                hf.create_dataset(name='midi_event', data=[e.encode() for e in midi_dict['midi_event']], dtype='S100')
-                hf.create_dataset(name='midi_event_time', data=midi_dict['midi_event_time'], dtype=np.float32)
-                hf.create_dataset(name='waveform', data=float32_to_int16(audio), dtype=np.int16)
+        with h5py.File(packed_hdf5_path, 'w') as hf:
+            hf.attrs.create('split', data='test'.encode(), dtype='S20')
+            hf.attrs.create('midi_filename', data='{}.mid'.format(audio_name).encode(), dtype='S100')
+            hf.attrs.create('audio_filename', data='{}.wav'.format(audio_name).encode(), dtype='S100')
+            hf.create_dataset(name='midi_event', data=[e.encode() for e in midi_dict['midi_event']], dtype='S100')
+            hf.create_dataset(name='midi_event_time', data=midi_dict['midi_event_time'], dtype=np.float32)
+            hf.create_dataset(name='waveform', data=float32_to_int16(audio), dtype=np.int16)
             
-            count += 1
+        count += 1
 
     logging.info('Write hdf5 to {}'.format(packed_hdf5_path))
     logging.info('Time: {:.3f} s'.format(time.time() - feature_time))

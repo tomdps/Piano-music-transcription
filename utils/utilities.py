@@ -12,9 +12,9 @@ import collections
 import pickle
 from mido import MidiFile
 
-from .piano_vad import (note_detection_with_onset_offset_regress, 
+from piano_vad import (note_detection_with_onset_offset_regress, 
     pedal_detection_with_onset_offset_regress, onsets_frames_note_detection, onsets_frames_pedal_detection)
-from . import config
+import config
 
 
 def create_folder(fd):
