@@ -41,7 +41,7 @@ def config():
     learning_rate_decay_steps = 10000
     learning_rate_decay_rate = 0.98
 
-    leave_one_out = None
+    leave_one_out = 2018
 
     gan_type = 'vanilla'  # otherwise 'wgan-gp', 'lsgan', or 'vanilla'
     gan_critic_iterations = 5 if gan_type == 'wgan-gp' else 1
@@ -62,7 +62,7 @@ def config():
 
     project = 'wave2midi'
     run_name = 'bce_gan'
-    entity = "tom_dps"
+    entity = "wave2midi"
 
 
     ex.observers.append(FileStorageObserver.create(logdir))
@@ -211,6 +211,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
 
         for key, value in {'loss': loss, **losses}.items():
             writer.add_scalar(key, value.item(), global_step=i)
+        wandb.log({"iteration": i, **losses})
 
         if i % validation_interval == 0:
             model.eval()
