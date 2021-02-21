@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import wandb
+
 
 from evaluate import evaluate
 from onsets_and_frames import *
@@ -41,7 +43,7 @@ def config():
 
     leave_one_out = None
 
-    gan_type = None  # otherwise 'wgan-gp', 'lsgan', or 'vanilla'
+    gan_type = 'vanilla'  # otherwise 'wgan-gp', 'lsgan', or 'vanilla'
     gan_critic_iterations = 5 if gan_type == 'wgan-gp' else 1
     gan_real_label = 1.0
     gan_fake_label = 0.0
@@ -58,6 +60,11 @@ def config():
     validation_length = sequence_length
     validation_interval = 500
 
+    project = 'wave2midi'
+    run_name = 'bce_gan'
+    entity = "tom_dps"
+
+
     ex.observers.append(FileStorageObserver.create(logdir))
 
 
@@ -66,16 +73,17 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
           model_complexity, learning_rate, learning_rate_decay_steps, learning_rate_decay_rate, leave_one_out,
           gan_type, gan_critic_iterations, gan_real_label, gan_fake_label, gan_mixup, gan_gp_lambda, lambda_pix2pix,
           discriminator_optimizer, discriminator_learning_rate,
-          clip_gradient_norm, validation_length, validation_interval):
+          clip_gradient_norm, validation_length, validation_interval, project, run_name, entity):
     print_config(ex.current_run)
 
     os.makedirs(logdir, exist_ok=True)
     writer = SummaryWriter(logdir)
+    wandb.init(project=project, entity=entity, name=run_name)
 
     train_groups, validation_groups = ['train'], ['validation']
 
     if leave_one_out is not None:
-        all_years = {'2004', '2006', '2008', '2009', '2011', '2013', '2014', '2015', '2017'}
+        all_years = {'2004', '2006', '2008', '2009', '2011', '2013', '2014', '2015', '2017', '2018'}
         train_groups = list(all_years - {str(leave_one_out)})
         validation_groups = [str(leave_one_out)]
 
@@ -163,6 +171,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
 
             for key, value in losses.items():
                 writer.add_scalar(key, value.item(), global_step=i)
+            wandb.log({"iteration": i, **losses})
 
         if batch is None:
             batch = next(data_iterator)
@@ -208,6 +217,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
             with torch.no_grad():
                 for key, value in evaluate(validation_dataset, model).items():
                     writer.add_scalar('validation/' + key.replace(' ', '_'), np.mean(value), global_step=i)
+                    wandb.log({'validation/' + key.replace(' ', '_'): np.mean(value), "validation_iteration": i})
             model.train()
 
         if i % checkpoint_interval == 0:
