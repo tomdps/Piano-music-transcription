@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import wandb
 
 from evaluate import evaluate
 from onsets_and_frames import *
@@ -39,12 +40,16 @@ def config():
     learning_rate_decay_steps = 10000
     learning_rate_decay_rate = 0.98
 
-    leave_one_out = None
+    leave_one_out = 2018
 
     clip_gradient_norm = 3
 
     validation_length = sequence_length
     validation_interval = 500
+    
+    project = 'wave2midi'
+    run_name = 'baseline'
+    entity = "tom_dps"
 
     ex.observers.append(FileStorageObserver.create(logdir))
 
@@ -52,16 +57,17 @@ def config():
 @ex.automain
 def train(logdir, device, iterations, resume_iteration, checkpoint_interval, train_on, batch_size, sequence_length,
           model_complexity, learning_rate, learning_rate_decay_steps, learning_rate_decay_rate, leave_one_out,
-          clip_gradient_norm, validation_length, validation_interval):
+          clip_gradient_norm, validation_length, validation_interval, project, run_name, entity):
     print_config(ex.current_run)
 
     os.makedirs(logdir, exist_ok=True)
     writer = SummaryWriter(logdir)
-
+    wandb.init(project=project, entity=entity, name=run_name)
+    
     train_groups, validation_groups = ['train'], ['validation']
 
     if leave_one_out is not None:
-        all_years = {'2004', '2006', '2008', '2009', '2011', '2013', '2014', '2015', '2017'}
+        all_years = {'2004', '2006', '2008', '2009', '2011', '2013', '2014', '2015', '2017', '2018'}
         train_groups = list(all_years - {str(leave_one_out)})
         validation_groups = [str(leave_one_out)]
 
@@ -102,14 +108,18 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
 
         for key, value in {'loss': loss, **losses}.items():
             writer.add_scalar(key, value.item(), global_step=i)
+        wandb.log({"loss": loss, "iteration": i, **losses})
 
         if i % validation_interval == 0:
             model.eval()
-            with torch.no_grad():
+            with torch.no_grad():                
                 for key, value in evaluate(validation_dataset, model).items():
                     writer.add_scalar('validation/' + key.replace(' ', '_'), np.mean(value), global_step=i)
+                    wandb.log({'validation/' + key.replace(' ', '_'): np.mean(value), "validation_iteration": i})
             model.train()
 
         if i % checkpoint_interval == 0:
             torch.save(model, os.path.join(logdir, f'model-{i}.pt'))
             torch.save(optimizer.state_dict(), os.path.join(logdir, 'last-optimizer-state.pt'))
+#             torch.save(model, os.path.join(wandb.run.dir, f'model-{i}.pt'))
+#             torch.save(optimizer.state_dict(), os.path.join(wandb.run.dir, 'last-optimizer-state.pt'))
