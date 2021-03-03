@@ -19,8 +19,9 @@ eps = sys.float_info.epsilon
 
 def evaluate(data, model, onset_threshold=0.5, frame_threshold=0.5, save_path=None):
     metrics = defaultdict(list)
-
+    
     for label in data:
+        
         pred, losses = model.run_on_batch(label)
 
         for key, loss in losses.items():

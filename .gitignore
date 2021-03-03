@@ -3,4 +3,5 @@ __pycache__
 .idea
 runs
 data
-
+wandb
+output

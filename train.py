@@ -47,7 +47,7 @@ def config():
     gan_critic_iterations = 5 if gan_type == 'wgan-gp' else 1
     gan_real_label = 1.0
     gan_fake_label = 0.0
-    gan_mixup = 0.0
+    gan_mixup = 0.3
     gan_gp_lambda = 10.0
 
     lambda_pix2pix = 100.0
