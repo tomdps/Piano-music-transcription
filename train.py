@@ -31,7 +31,7 @@ def config():
     batch_size = 8
     sequence_length = 327680
     model_complexity = 48
-
+    rnn="lstm"
     if torch.cuda.is_available() and torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory < 10e9:
         batch_size //= 2
         sequence_length //= 2
@@ -59,7 +59,8 @@ def config():
 
     validation_length = sequence_length
     validation_interval = 500
-
+    
+    project_id="cluster_gan"
     project = 'wave2midi'
     run_name = 'bce_gan'
     entity = "wave2midi"
@@ -70,15 +71,15 @@ def config():
 
 @ex.automain
 def train(logdir, device, iterations, resume_iteration, checkpoint_interval, train_on, batch_size, sequence_length,
-          model_complexity, learning_rate, learning_rate_decay_steps, learning_rate_decay_rate, leave_one_out,
+          model_complexity, rnn, learning_rate, learning_rate_decay_steps, learning_rate_decay_rate, leave_one_out,
           gan_type, gan_critic_iterations, gan_real_label, gan_fake_label, gan_mixup, gan_gp_lambda, lambda_pix2pix,
           discriminator_optimizer, discriminator_learning_rate,
-          clip_gradient_norm, validation_length, validation_interval, project, run_name, entity):
+          clip_gradient_norm, validation_length, validation_interval, project_id,project, run_name, entity):
     print_config(ex.current_run)
 
     os.makedirs(logdir, exist_ok=True)
     writer = SummaryWriter(logdir)
-    wandb.init(project=project, entity=entity, name=run_name)
+    wandb.init(id=project_id,project=project, entity=entity, name=run_name, resume=True)
 
     train_groups, validation_groups = ['train'], ['validation']
 
@@ -97,7 +98,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
     loader = DataLoader(dataset, batch_size, shuffle=True, drop_last=True)
 
     if resume_iteration is None:
-        model = OnsetsAndFrames(N_MELS, MAX_MIDI - MIN_MIDI + 1, model_complexity).to(device)
+        model = OnsetsAndFrames(N_MELS, MAX_MIDI - MIN_MIDI + 1, model_complexity,rnn).to(device)
         optimizer = torch.optim.Adam(model.parameters(), learning_rate)
         resume_iteration = 0
     else:
