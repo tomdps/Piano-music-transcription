@@ -19,23 +19,21 @@ class GRU(nn.Module):
             num_directions = 2 if self.rnn.bidirectional else 1
 
             h = torch.zeros(num_directions, batch_size, hidden_size, device=x.device)
-            c = torch.zeros(num_directions, batch_size, hidden_size, device=x.device)
             output = torch.zeros(batch_size, sequence_length, num_directions * hidden_size, device=x.device)
 
             # forward direction
             slices = range(0, sequence_length, self.inference_chunk_length)
             for start in slices:
                 end = start + self.inference_chunk_length
-                output[:, start:end, :], (h, c) = self.rnn(x[:, start:end, :], (h, c))
+                output[:, start:end, :], h = self.rnn(x[:, start:end, :], h)
 
             # reverse direction
             if self.rnn.bidirectional:
                 h.zero_()
-                c.zero_()
 
                 for start in reversed(slices):
                     end = start + self.inference_chunk_length
-                    result, (h, c) = self.rnn(x[:, start:end, :], (h, c))
+                    result, h = self.rnn(x[:, start:end, :], h)
                     output[:, start:end, hidden_size:] = result[:, :, hidden_size:]
 
             return output
