@@ -1,5 +1,7 @@
 import json
 import os
+import torchaudio
+import torchaudio.sox_effects as sox
 from abc import abstractmethod
 from glob import glob
 
@@ -9,16 +11,18 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from .constants import *
+from .utils import pad_truncate_sequence
 from .midi import parse_midi
 
 
 class PianoRollAudioDataset(Dataset):
-    def __init__(self, path, groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE):
+    def __init__(self, path, groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE, augment=False, debug=False):
         self.path = path
         self.groups = groups if groups is not None else self.available_groups()
         self.sequence_length = sequence_length
         self.device = device
         self.random = np.random.RandomState(seed)
+        self.augmentor = Augmentor(self.random)
 
         self.data = []
         print(f"Loading {len(groups)} group{'s' if len(groups) > 1 else ''} "
@@ -126,6 +130,41 @@ class PianoRollAudioDataset(Dataset):
         data = dict(path=audio_path, audio=audio, label=label, velocity=velocity)
         torch.save(data, saved_data_path)
         return data
+
+
+class Augmentor(object):
+    def __init__(self, random_state):
+        """Data augmentor."""
+        
+        self.sample_rate = SAMPLE_RATE
+        self.random_state = random_state
+
+    def augment(self, x):
+        clip_samples = len(x)
+
+        tfm = sox.Transformer()
+        tfm.set_globals(verbosity=0)
+
+        tfm.pitch(self.random_state.uniform(-0.1, 0.1, 1)[0])
+        tfm.contrast(self.random_state.uniform(0, 100, 1)[0])
+
+        tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
+            width_q=self.random_state.uniform(1, 2, 1)[0], 
+            gain_db=self.random_state.uniform(-30, 10, 1)[0])
+
+        tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
+            width_q=self.random_state.uniform(1, 2, 1)[0], 
+            gain_db=self.random_state.uniform(-30, 10, 1)[0])
+        
+        tfm.reverb(reverberance=self.random_state.uniform(0, 70, 1)[0])
+
+        aug_x = tfm.build_array(input_array=x, sample_rate_in=self.sample_rate)
+        aug_x = pad_truncate_sequence(aug_x, clip_samples)
+        
+        return aug_x
+
+    def loguniform(self, low, high, size):
+        return np.exp(self.random_state.uniform(np.log(low), np.log(high), size))
 
 
 class MAESTRO(PianoRollAudioDataset):

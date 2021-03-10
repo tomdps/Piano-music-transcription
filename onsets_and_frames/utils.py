@@ -4,7 +4,7 @@ from functools import reduce
 import torch
 from PIL import Image
 from torch.nn.modules.module import _addindent
-
+import numpy as np
 
 def cycle(iterable):
     while True:
@@ -78,3 +78,9 @@ def save_pianoroll(path, onsets, frames, onset_threshold=0.5, frame_threshold=0.
     image = Image.fromarray(image, 'RGB')
     image = image.resize((image.size[0], image.size[1] * zoom))
     image.save(path)
+
+def pad_truncate_sequence(x, max_len):
+    if len(x) < max_len:
+        return np.concatenate((x, np.zeros(max_len - len(x))))
+    else:
+        return x[0 : max_len]
