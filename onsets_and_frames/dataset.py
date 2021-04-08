@@ -2,6 +2,7 @@ import json
 import os
 import torchaudio
 import torchaudio.sox_effects as sox
+import librosa
 from abc import abstractmethod
 from glob import glob
 
@@ -16,13 +17,18 @@ from .midi import parse_midi
 
 
 class PianoRollAudioDataset(Dataset):
-    def __init__(self, path, groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE, augment=False, debug=False):
+    def __init__(self, path, groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE, augment=True, debug=False):
         self.path = path
         self.groups = groups if groups is not None else self.available_groups()
         self.sequence_length = sequence_length
         self.device = device
         self.random = np.random.RandomState(seed)
-        self.augmentor = Augmentor(self.random)
+        if augment:
+            self.augmentor = Augmentor(self.random)
+        else:
+            self.augmentor = None
+        if debug:
+            self.groups = list(self.groups[0])
 
         self.data = []
         print(f"Loading {len(groups)} group{'s' if len(groups) > 1 else ''} "
@@ -58,6 +64,12 @@ class PianoRollAudioDataset(Dataset):
         result['frame'] = (result['label'] > 1).float()
         result['velocity'] = result['velocity'].float().div_(128.0)
 
+        if self.augmentor is not None:
+            result['audio'] = self.augmentor.augment(result['audio'])
+
+        if note_shift != 0:
+            result['audio'] = librosa.effects.pitch_shift(result['audio'], self.sample_rate, 
+                note_shift, bins_per_octave=12)
         return result
 
     def __len__(self):
@@ -169,8 +181,8 @@ class Augmentor(object):
 
 class MAESTRO(PianoRollAudioDataset):
 
-    def __init__(self, path='data/MAESTRO', groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE):
-        super().__init__(path, groups if groups is not None else ['train'], sequence_length, seed, device)
+    def __init__(self, path='data/MAESTRO', groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE, debug=False, augment=True):
+        super().__init__(path, groups if groups is not None else ['train'], sequence_length, seed, device, debug, augment)
 
     @classmethod
     def available_groups(cls):
@@ -205,8 +217,8 @@ class MAESTRO(PianoRollAudioDataset):
 
 
 class MAPS(PianoRollAudioDataset):
-    def __init__(self, path='data/MAPS', groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE):
-        super().__init__(path, groups if groups is not None else ['ENSTDkAm', 'ENSTDkCl'], sequence_length, seed, device)
+    def __init__(self, path='data/MAPS', groups=None, sequence_length=None, seed=42, device=DEFAULT_DEVICE, debug=False, augment=False):
+        super().__init__(path, groups if groups is not None else ['ENSTDkAm', 'ENSTDkCl'], sequence_length, seed, device, debug, augment)
 
     @classmethod
     def available_groups(cls):
