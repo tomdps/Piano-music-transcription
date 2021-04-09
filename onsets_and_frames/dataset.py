@@ -1,7 +1,6 @@
 import json
 import os
-import torchaudio
-import torchaudio.sox_effects as sox
+import sox
 import librosa
 from abc import abstractmethod
 from glob import glob

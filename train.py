@@ -21,7 +21,7 @@ ex = Experiment('train_transcriber')
 
 @ex.config
 def config():
-    logdir = 'runs/transcriber-' + datetime.now().strftime('%y%m%d-%H%M%S')
+    logdir = '/content/drive/MyDrive/wave2midi/runs/transcriber_gan_augmented-' + datetime.now().strftime('%y%m%d-%H%M%S')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     iterations = 500000
     resume_iteration = None
@@ -88,7 +88,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval, tra
         validation_groups = [str(leave_one_out)]
 
     if train_on == 'MAESTRO':
-        dataset = MAESTRO(groups=train_groups, sequence_length=sequence_length)
+        dataset = MAESTRO(groups=train_groups, sequence_length=sequence_length, path='/content/drive/MyDrive/wave2midi/piano_music_transcription/data/MAESTRO')
         validation_dataset = MAESTRO(groups=validation_groups, sequence_length=sequence_length)
     else:
         dataset = MAPS(groups=['AkPnBcht', 'AkPnBsdf', 'AkPnCGdD', 'AkPnStgb', 'SptkBGAm', 'SptkBGCl', 'StbgTGd2'], sequence_length=sequence_length)
