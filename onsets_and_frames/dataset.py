@@ -1,7 +1,7 @@
 import json
 import os
-import sox
-import librosa
+import torchaudio
+import torchaudio.sox_effects as sox
 from abc import abstractmethod
 from glob import glob
 
@@ -66,9 +66,9 @@ class PianoRollAudioDataset(Dataset):
         if self.augmentor is not None:
             result['audio'] = self.augmentor.augment(result['audio'])
 
-        if note_shift != 0:
-            result['audio'] = librosa.effects.pitch_shift(result['audio'], self.sample_rate, 
-                note_shift, bins_per_octave=12)
+        # note_shift = self.random.randint(low=-self.max_note_shift, 
+        #     high=self.max_note_shift + 1)
+
         return result
 
     def __len__(self):
@@ -151,25 +151,35 @@ class Augmentor(object):
         self.random_state = random_state
 
     def augment(self, x):
-        clip_samples = len(x)
+        clip_samples = x.shape[0]
 
-        tfm = sox.Transformer()
-        tfm.set_globals(verbosity=0)
+        # tfm = sox.Transformer()
+        # tfm.set_globals(verbosity=0)
 
-        tfm.pitch(self.random_state.uniform(-0.1, 0.1, 1)[0])
-        tfm.contrast(self.random_state.uniform(0, 100, 1)[0])
+        # tfm.pitch(self.random_state.uniform(-0.1, 0.1, 1)[0])
+        # tfm.contrast(self.random_state.uniform(0, 100, 1)[0])
 
-        tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
-            width_q=self.random_state.uniform(1, 2, 1)[0], 
-            gain_db=self.random_state.uniform(-30, 10, 1)[0])
+        # tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
+        #     width_q=self.random_state.uniform(1, 2, 1)[0], 
+        #     gain_db=self.random_state.uniform(-30, 10, 1)[0])
 
-        tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
-            width_q=self.random_state.uniform(1, 2, 1)[0], 
-            gain_db=self.random_state.uniform(-30, 10, 1)[0])
+        # tfm.equalizer(frequency=self.loguniform(32, 4096, 1)[0], 
+        #     width_q=self.random_state.uniform(1, 2, 1)[0], 
+        #     gain_db=self.random_state.uniform(-30, 10, 1)[0])
         
-        tfm.reverb(reverberance=self.random_state.uniform(0, 70, 1)[0])
+        # tfm.reverb(reverberance=self.random_state.uniform(0, 70, 1)[0])
 
-        aug_x = tfm.build_array(input_array=x, sample_rate_in=self.sample_rate)
+        effects = [
+                ['pitch', str(self.random_state.uniform(-0.1, 0.1, 1)[0])],
+                ['contrast', str(self.random_state.uniform(0, 100, 1)[0])],
+                ['equalizer', str(loguniform(32, 4096, 1)[0]), str(self.random_state.uniform(1, 2, 1)[0]), str(self.random_state.uniform(-30, 10, 1)[0])],
+                ['equalizer', str(loguniform(32, 4096, 1)[0]), str(self.random_state.uniform(1, 2, 1)[0]), str(self.random_state.uniform(-30, 10, 1)[0])],
+                ['reverb', str(self.random_state.uniform(0, 70, 1)[0])]
+                ]
+
+        aug_x, _ = sox.apply_effects_tensor(x, self.sample_rate, effects, channels_first=False)
+
+        # aug_x = tfm.build_array(input_array=x, sample_rate_in=self.sample_rate)
         aug_x = pad_truncate_sequence(aug_x, clip_samples)
         
         return aug_x

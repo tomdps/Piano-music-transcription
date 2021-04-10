@@ -80,7 +80,8 @@ def save_pianoroll(path, onsets, frames, onset_threshold=0.5, frame_threshold=0.
     image.save(path)
 
 def pad_truncate_sequence(x, max_len):
-    if len(x) < max_len:
-        return np.concatenate((x, np.zeros(max_len - len(x))))
+    seq_len, midi_bin = x.shape
+    if seq_len < max_len:
+        return torch.concatenate((x, torch.zeros((max_len - seq_len, midi_bin))), axis=0)
     else:
-        return x[0 : max_len]
+        return x[0:max_len, :]
