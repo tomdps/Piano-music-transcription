@@ -10,6 +10,7 @@ from torch import nn
 
 from .lstm import BiLSTM
 from .mel import melspectrogram
+from .gru import GRU
 
 
 class ConvStack(nn.Module):
@@ -50,11 +51,14 @@ class ConvStack(nn.Module):
 
 
 class OnsetsAndFrames(nn.Module):
-    def __init__(self, input_features, output_features, model_complexity=48):
+    def __init__(self, input_features, output_features, model_complexity=48, rnn='lstm'):
         super().__init__()
 
         model_size = model_complexity * 16
-        sequence_model = lambda input_size, output_size: BiLSTM(input_size, output_size // 2)
+        if rnn=="lstm":
+            sequence_model = lambda input_size, output_size: BiLSTM(input_size, output_size // 2)
+        elif rnn=="gru":
+            sequence_model = lambda input_size, output_size: GRU(input_size, output_size // 2)
 
         self.onset_stack = nn.Sequential(
             ConvStack(input_features, model_size),
